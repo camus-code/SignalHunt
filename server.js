@@ -1,62 +1,43 @@
 // server.js
-const express = require('express');
-const app = express();
+const express = require("express");
+const http = require("http");
+const socketIo = require("socket.io");
+const axios = require("axios");
 const rp = require('request-promise');
+const port = process.env.PORT || 8000;
+const index = require("./routes/index");
 
-// Requests to http://localhost:8000/ will respond with a JSON object
-app.get('/', (req, res) => {
-   res.json({success: true});
+const app = express();
+app.use(index);
+const server = http.createServer(app);
+const io = socketIo(server);
+
+io.on("connection", socket => {
+  console.log("New client connected. SocketID:", socket.id), setInterval(
+    () => getTickersAndEmit(socket),
+    10000
+  );
+  socket.on("disconnect", () => console.log("Client disconnected"));
 });
 
-app.listen(8000, () => console.log("Listening on port 8000!"));
 
-
-// All tickers route (1 -- 100)
-app.get('/tickers', (req, res) => {
-	const requestOptions = {
-  method: 'GET',
-  uri: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest',
-  qs: {
-    start: 1,
-    limit: 250,
-    convert: 'USD'
-  },
-  headers: {
-    'X-CMC_PRO_API_KEY': 'd75ae6ac-824a-4708-9952-e90df6c4f840'
-  },
-  json: true,
-  gzip: true
+//Gets all tickers and sends it to Tickers component
+const getTickersAndEmit = async socket => {
+	const tickersURL = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
+  try {
+    const res = await axios.get(tickersURL, {
+    	method: 'GET',
+    	headers: {
+    		'X-CMC_PRO_API_KEY': 'd75ae6ac-824a-4708-9952-e90df6c4f840'
+    	},
+    	json: true,
+    	gzip: true
+    });
+    console.log(res.data),
+    socket.emit("fromAPI", res.data);
+  } catch (error) {
+    console.error(`Error: ${error}`);
+  }
 };
 
-rp(requestOptions).then(response => {
-  console.log('API call response:', response);
-  res.send(response);
-}).catch((err) => {
-  console.log('API call error:', err.message);
-})});
-
-
-// Search Route ()
-app.get('/search', (req, res) => {
-	const requestOptions = {
-  method: 'GET',
-  uri: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest',
-  qs: {
-    convert: 'USD',
-    symbol: 'BTC'
-  },
-  headers: {
-    'X-CMC_PRO_API_KEY': 'd75ae6ac-824a-4708-9952-e90df6c4f840'
-  },
-  json: true,
-  gzip: true
-};
-
-rp(requestOptions).then((response, req) => {
-  console.log('API call response:', response);
-  console.log(req.query.parent)
-  res.send(response);
-}).catch((err) => {
-  console.log('API call error:', err.message);
-})});
-
+server.listen(port, () => console.log(`Listening on port ${port}!`));
