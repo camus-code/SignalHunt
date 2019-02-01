@@ -19,7 +19,7 @@ class TickerList extends React.Component {
         		</li>        	
         )})}
 	    	</ul>
-	    	</div> : null}
+	    	</div> : null2}
 	  	</div>
 	    
 	  );
